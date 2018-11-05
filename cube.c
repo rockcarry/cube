@@ -267,18 +267,12 @@ static int cube_check_state(CUBE *cube, int state)
 
 static int cube_check_same(CUBE *cube1, CUBE *cube2)
 {
-    int i, j;
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            if (cube1->f[i][j] != cube2->f[i][j]) return 0;
-            if (cube1->b[i][j] != cube2->b[i][j]) return 0;
-            if (cube1->u[i][j] != cube2->u[i][j]) return 0;
-            if (cube1->d[i][j] != cube2->d[i][j]) return 0;
-            if (cube1->l[i][j] != cube2->l[i][j]) return 0;
-            if (cube1->r[i][j] != cube2->r[i][j]) return 0;
-        }
-    }
-    return 1;
+    return memcmp(cube1, cube2, 3 * 3 * 6) == 0 ? 1 : 0;
+}
+
+static void cube_copy(CUBE *cube1, CUBE *cube2)
+{
+    memcpy(cube1, cube2, sizeof(CUBE));
 }
 
 static int search_table_create(TABLE *table, int size)
@@ -317,7 +311,7 @@ static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int op
     table->close = 0;
 
     // put original cube into open table
-    memcpy(&(table->cubes[table->open++]), orgcube, sizeof(CUBE));
+    cube_copy(&(table->cubes[table->open++]), orgcube);
 
     while (table->close < table->open) {
         // check memory usage
@@ -332,16 +326,14 @@ static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int op
         // extend cubes check state and put new cubes into open table
         for (i=0; i<opnum; i++) {
             newcube = &(table->cubes[table->open]);
-            memcpy(newcube, curcube, sizeof(CUBE));
-            cube_op(newcube, oplist[i]);
+            cube_copy(newcube, curcube  );
+            cube_op  (newcube, oplist[i]);
+            newcube->op     = oplist[i];
+            newcube->parent = curcube;
             if (cube_check_state(newcube, state)) {
-                newcube->op     = oplist[i];
-                newcube->parent = curcube;
                 return newcube;
             }
             if (!isin_close_table(table, newcube)) {
-                newcube->op     = oplist[i];
-                newcube->parent = curcube;
                 table->open++;
             }
         }
@@ -361,7 +353,7 @@ static void cube_solve(CUBE *c)
         static char oplist[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R };
         CUBE *newcube = search(&t, c, CUBE_STATE_CROSS, oplist, 5);
         if (newcube) {
-            memcpy(c, newcube, sizeof(CUBE));
+            cube_copy(c, newcube);
             printf("cube solved !\n");
         } else {
             printf("can't solve !\n");
