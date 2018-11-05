@@ -17,23 +17,6 @@ typedef struct tagCUBE {
 #pragma pack()
 
 typedef struct {
-    int   open ;
-    int   close;
-    int   size ;
-    CUBE *cubes;
-} TABLE;
-
-static void cube_init(CUBE *c)
-{
-    memset(c->f, 'W', sizeof(c->f));
-    memset(c->b, 'Y', sizeof(c->b));
-    memset(c->u, 'G', sizeof(c->u));
-    memset(c->d, 'B', sizeof(c->d));
-    memset(c->l, 'R', sizeof(c->l));
-    memset(c->r, 'O', sizeof(c->r));
-}
-
-typedef struct {
     int   stride;
     char *buffer;
 } LINEITEM;
@@ -69,10 +52,17 @@ static void surface_rotate90(char buf[3][3])
     }
 }
 
-static void cube_n(CUBE *c)
+static void cube_init(CUBE *c)
 {
-    // nop, do nothing
+    memset(c->f, 'W', sizeof(c->f));
+    memset(c->b, 'Y', sizeof(c->b));
+    memset(c->u, 'G', sizeof(c->u));
+    memset(c->d, 'B', sizeof(c->d));
+    memset(c->l, 'R', sizeof(c->l));
+    memset(c->r, 'O', sizeof(c->r));
 }
+
+static void cube_n(CUBE *c) { /* nop, do nothing */ }
 
 static void cube_f(CUBE *c)
 {
@@ -275,6 +265,13 @@ static void cube_copy(CUBE *cube1, CUBE *cube2)
     memcpy(cube1, cube2, sizeof(CUBE));
 }
 
+typedef struct {
+    int   open ;
+    int   close;
+    int   size ;
+    CUBE *cubes;
+} TABLE;
+
 static int search_table_create(TABLE *table, int size)
 {
     table->size  = size;
@@ -347,6 +344,7 @@ static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int op
 static void cube_solve(CUBE *c)
 {
     TABLE t;
+
     if (search_table_create(&t, 1024*1024*4) != 0) {
         printf("failed to create cube search table !\n");
         return;
@@ -428,7 +426,4 @@ int main(void)
 
     return 0;
 }
-
-
-
 
