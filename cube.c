@@ -370,7 +370,9 @@ static void cube_solve(CUBE *c)
             cube_copy(c, cube);
             while (cube) {
                 static char optab[] = { 'N', 'F', 'B', 'U', 'D', 'L', 'R' };
-                oplist[i++] = optab[(int)cube->op];
+                if (cube->op) {
+                    oplist[i++] = optab[(int)cube->op];
+                }
                 cube = cube->parent;
             }
             printf("\noperation list:\n");
@@ -390,6 +392,7 @@ static void cube_solve(CUBE *c)
 static void show_help(void)
 {
     printf(
+        "\n"
         "available commands:\n\n"
         "f f2 f' b b2 b' u u2 u' d d2 d' l l2 l' r r2 r'\n"
         "init rand solve help exit\n\n"
