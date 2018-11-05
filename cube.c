@@ -284,7 +284,10 @@ static int search_table_create(TABLE *table, int size)
 
 static void search_table_destroy(TABLE *table)
 {
-    if (table->cubes) free(table->cubes);
+    if (table->cubes) {
+        free(table->cubes);
+        table->cubes = NULL;
+    }
 }
 
 static int isin_close_table(TABLE *table, CUBE *cube)
