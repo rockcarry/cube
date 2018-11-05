@@ -220,45 +220,45 @@ enum {
 static int cube_check_color(char *buf, int *checkarray, int size)
 {
     int i;
-    for (i=1; i<size; i++) {
-        if (buf[checkarray[i]] != buf[checkarray[0]]) {
-            return 0;
+    int n;
+    for (i=1,n=0; i<size; i++) {
+        if (buf[checkarray[i]] == buf[checkarray[0]]) {
+            n++;
         }
     }
-    return 1;
+    return n;
 }
 
 static int cube_check_state(CUBE *cube, int state)
 {
     static int cross[] = { 4, 1, 3, 5, 7 };
     static int solve[] = { 4, 0, 1, 2, 3, 5, 6, 7, 8 };
-    int ret = 0;
+    int ret;
 
     switch (state) {
     case CUBE_STATE_CROSS:
         ret = cube_check_color(&(cube->f[0][0]), cross, 5);
+        if (ret == 4 ) ret = -1;
         break;
     case CUBE_STATE_SOLVED:
         ret = cube_check_color(&(cube->f[0][0]), solve, 9);
-        if (!ret) break;
-        ret = cube_check_color(&(cube->b[0][0]), solve, 9);
-        if (!ret) break;
-        ret = cube_check_color(&(cube->u[0][0]), solve, 9);
-        if (!ret) break;
-        ret = cube_check_color(&(cube->d[0][0]), solve, 9);
-        if (!ret) break;
-        ret = cube_check_color(&(cube->l[0][0]), solve, 9);
-        if (!ret) break;
-        ret = cube_check_color(&(cube->r[0][0]), solve, 9);
+        ret+= cube_check_color(&(cube->b[0][0]), solve, 9);
+        ret+= cube_check_color(&(cube->u[0][0]), solve, 9);
+        ret+= cube_check_color(&(cube->d[0][0]), solve, 9);
+        ret+= cube_check_color(&(cube->l[0][0]), solve, 9);
+        ret+= cube_check_color(&(cube->r[0][0]), solve, 9);
+        if (ret == 48) ret = -1;
         break;
     }
     return ret;
 }
 
+#if 0
 static int cube_check_same(CUBE *cube1, CUBE *cube2)
 {
     return memcmp(cube1, cube2, 3 * 3 * 6) == 0 ? 1 : 0;
 }
+#endif
 
 static void cube_copy(CUBE *cube1, CUBE *cube2)
 {
@@ -287,31 +287,37 @@ static void search_table_destroy(TABLE *table)
     }
 }
 
-static int isin_close_table(TABLE *table, CUBE *cube)
+static int is_4same_ops(CUBE *cube)
 {
-    int i;
-    for (i=0; i<table->close; i++) {
-        if (cube_check_same(cube, &table->cubes[i])) {
-            return 1;
-        }
+    int curop = cube->op;
+    int n     = 0;
+    while (cube) {
+        if (cube->op == curop) {
+            if (++n == 4) {
+                return 1;
+            }
+            cube = cube->parent;
+        } else break;
     }
     return 0;
 }
 
-static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int opnum)
+static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnum)
 {
-    CUBE *curcube;
-    CUBE *newcube;
-    int   i;
+    CUBE *curcube, *newcube;
+    int   curval, newval, i;
 
-    if (cube_check_state(orgcube, state)) return orgcube;
+    if (cube_check_state(start, state) == -1) return start;
 
     // init search table
     table->open  = 0;
     table->close = 0;
 
     // put original cube into open table
-    cube_copy(&(table->cubes[table->open++]), orgcube);
+    cube_copy(&(table->cubes[table->open]), start);
+    table->cubes[table->open].op     = 0;
+    table->cubes[table->open].parent = NULL;
+    table->open++;
 
     while (table->close < table->open) {
         // check memory usage
@@ -322,6 +328,7 @@ static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int op
 
         // dequeue a cube from open table
         curcube = &(table->cubes[table->close++]);
+        curval  = cube_check_state(curcube, state);
 
         // extend cubes check state and put new cubes into open table
         for (i=0; i<opnum; i++) {
@@ -330,13 +337,17 @@ static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int op
             cube_op  (newcube, oplist[i]);
             newcube->op     = oplist[i];
             newcube->parent = curcube;
-            if (cube_check_state(newcube, state)) {
+            newval = cube_check_state(newcube, state);
+            if (newval == -1) { // found
                 return newcube;
             }
-            if (!isin_close_table(table, newcube)) {
-                table->open++;
+            if (  curval - newval > 0
+               || is_4same_ops(newcube) ) {
+                continue;
             }
+            table->open++;
         }
+//      printf("%d %d\n", table->close, table->open);
     }
     return NULL;
 }
@@ -345,7 +356,7 @@ static void cube_solve(CUBE *c)
 {
     TABLE t;
 
-    if (search_table_create(&t, 1024*1024*4) != 0) {
+    if (search_table_create(&t, 1024*1024*8) != 0) {
         printf("failed to create cube search table !\n");
         return;
     }
