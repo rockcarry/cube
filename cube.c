@@ -24,7 +24,7 @@ typedef struct {
 static void line_rotate90(LINEITEM item[5])
 {
     int i, j;
-    
+
     for (i=0; i<5; i++) {
         int   dst_idx    = (i+0) % 5;
         int   src_idx    = (i+1) % 5;
@@ -178,12 +178,12 @@ static void cube_render(CUBE *c)
     char buffer[9][12] = {0};
     int  i, j;
 
-    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);  
-    WORD wOldColorAttrs;  
-    CONSOLE_SCREEN_BUFFER_INFO csbiInfo; 
+    HANDLE h = GetStdHandle(STD_OUTPUT_HANDLE);
+    WORD wOldColorAttrs;
+    CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
 
-    // save the current color  
-    GetConsoleScreenBufferInfo(h, &csbiInfo);  
+    // save the current color
+    GetConsoleScreenBufferInfo(h, &csbiInfo);
     wOldColorAttrs = csbiInfo.wAttributes;
 
     for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[3+i][3+j] = c->f[i][j];
@@ -199,7 +199,7 @@ static void cube_render(CUBE *c)
             case 'W': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE); break;
             case 'Y': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN); break;
             case 'G': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_GREEN); break;
-            case 'O': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_BLUE ); break;
+            case 'O': SetConsoleTextAttribute(h, FOREGROUND_RED|FOREGROUND_BLUE ); break;
             case 'B': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_BLUE ); break;
             case 'R': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED  ); break;
             }
@@ -208,7 +208,7 @@ static void cube_render(CUBE *c)
         printf("\n");
     }
 
-    // Restore the original color  
+    // Restore the original color
     SetConsoleTextAttribute(h, wOldColorAttrs);
 }
 
@@ -363,9 +363,21 @@ static void cube_solve(CUBE *c)
 
     if (1) {
         static char oplist[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R };
-        CUBE *newcube = search(&t, c, CUBE_STATE_CROSS, oplist, 5);
-        if (newcube) {
-            cube_copy(c, newcube);
+        CUBE *cube = search(&t, c, CUBE_STATE_CROSS, oplist, 5);
+        if (cube) {
+            char  oplist[256];
+            int   i = 0, n = 0;
+            cube_copy(c, cube);
+            while (cube) {
+                static char optab[] = { 'N', 'F', 'B', 'U', 'D', 'L', 'R' };
+                oplist[i++] = optab[(int)cube->op];
+                cube = cube->parent;
+            }
+            printf("\noperation list:\n");
+            while (--i >= 0) {
+                printf("%c%s%s", oplist[i], i == 0 ? "" : " -> ", ++n % 12 == 0 ? "\n" : "");
+            }
+            printf("\n");
             printf("cube solved !\n");
         } else {
             printf("can't solve !\n");
@@ -375,14 +387,26 @@ static void cube_solve(CUBE *c)
     search_table_destroy(&t);
 }
 
+static void show_help(void)
+{
+    printf(
+        "available commands:\n\n"
+        "f f2 f' b b2 b' u u2 u' d d2 d' l l2 l' r r2 r'\n"
+        "init rand solve help exit\n\n"
+        "note: all command is case sensitive.\n"
+    );
+}
+
 int main(void)
 {
-    char  cmd[128];
-    CUBE  c;
+    char cmd[128];
+    char str[256];
+    CUBE c;
 
     // init cube
     cube_init(&c);
 
+    show_help();
     while (1) {
         cube_render(&c);
         printf("command: ");
@@ -426,11 +450,16 @@ int main(void)
         } else if (strcmp(cmd, "init") == 0) {
             cube_init(&c);
         } else if (strcmp(cmd, "rand") == 0) {
-            cube_rand(&c, 100);
+            gets(str);
+            cube_rand(&c, atoi(str) == 0 ? 100 : atoi(str));
         } else if (strcmp(cmd, "solve") == 0) {
             cube_solve(&c);
+        } else if (strcmp(cmd, "help") == 0) {
+            show_help();
         } else if (strcmp(cmd, "exit") == 0) {
             break;
+        } else {
+            printf("unsupported command !\n");
         }
         printf("\n");
     }
