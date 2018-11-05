@@ -4,70 +4,33 @@
 #include <string.h>
 
 #pragma pack(1)
-typedef struct {
+typedef struct tagCUBE {
     char f[3][3];
     char b[3][3];
     char u[3][3];
     char d[3][3];
     char l[3][3];
     char r[3][3];
+    char op;
+    struct tagCUBE *parent;
 } CUBE;
 #pragma pack()
 
+typedef struct {
+    int   open ;
+    int   close;
+    int   size ;
+    CUBE *cubes;
+} TABLE;
+
 static void cube_init(CUBE *c)
 {
-#if 1
     memset(c->f, 'W', sizeof(c->f));
     memset(c->b, 'Y', sizeof(c->b));
     memset(c->u, 'G', sizeof(c->u));
     memset(c->d, 'B', sizeof(c->d));
     memset(c->l, 'R', sizeof(c->l));
     memset(c->r, 'O', sizeof(c->r));
-#else
-    int i, j, n = 1;
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            c->f[i][j] = n++;
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            c->b[i][j] = n++;
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            c->u[i][j] = n++;
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            c->d[i][j] = n++;
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            c->l[i][j] = n++;
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            c->r[i][j] = n++;
-        }
-    }
-#endif
-}
-
-static void surface_rotate90(char buf[3][3])
-{
-    char tmp[3][3];
-    int  i, j;
-    memcpy(tmp, buf, sizeof(tmp));
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buf[i][j] = tmp[3-j-1][i];
-        }
-    }
 }
 
 typedef struct {
@@ -94,6 +57,23 @@ static void line_rotate90(LINEITEM item[5])
     }
 }
 
+static void surface_rotate90(char buf[3][3])
+{
+    char tmp[3][3];
+    int  i, j;
+    memcpy(tmp, buf, sizeof(tmp));
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            buf[i][j] = tmp[3-j-1][i];
+        }
+    }
+}
+
+static void cube_n(CUBE *c)
+{
+    // nop, do nothing
+}
+
 static void cube_f(CUBE *c)
 {
     char temp[3];
@@ -104,8 +84,8 @@ static void cube_f(CUBE *c)
         {-3,  &(c->r[2][0]) },
         {-1,  &(c->u[2][2]) },
     };
-    surface_rotate90(c->f);
     line_rotate90(lines);
+    surface_rotate90(c->f);
 }
 
 static void cube_b(CUBE *c)
@@ -118,8 +98,8 @@ static void cube_b(CUBE *c)
         {-3,  &(c->l[2][0]) },
         { 1,  &(c->u[0][0]) },
     };
-    surface_rotate90(c->b);
     line_rotate90(lines);
+    surface_rotate90(c->b);
 }
 
 static void cube_u(CUBE *c)
@@ -132,8 +112,8 @@ static void cube_u(CUBE *c)
         { 1,  &(c->r[0][0]) },
         { 1,  &(c->b[0][0]) },
     };
-    surface_rotate90(c->u);
     line_rotate90(lines);
+    surface_rotate90(c->u);
 }
 
 static void cube_d(CUBE *c)
@@ -146,8 +126,8 @@ static void cube_d(CUBE *c)
         { 1,  &(c->f[2][0]) },
         { 1,  &(c->l[2][0]) },
     };
-    surface_rotate90(c->d);
     line_rotate90(lines);
+    surface_rotate90(c->d);
 }
 
 static void cube_l(CUBE *c)
@@ -160,8 +140,8 @@ static void cube_l(CUBE *c)
         { 3,  &(c->u[0][0]) },
         {-3,  &(c->b[2][2]) },
     };
-    surface_rotate90(c->l);
     line_rotate90(lines);
+    surface_rotate90(c->l);
 }
 
 static void cube_r(CUBE *c)
@@ -174,26 +154,34 @@ static void cube_r(CUBE *c)
         { 3,  &(c->d[0][2]) },
         {-3,  &(c->b[2][0]) },
     };
-    surface_rotate90(c->r);
     line_rotate90(lines);
+    surface_rotate90(c->r);
+}
+
+enum {
+    CUBE_OP_N,
+    CUBE_OP_F,
+    CUBE_OP_B,
+    CUBE_OP_U,
+    CUBE_OP_D,
+    CUBE_OP_L,
+    CUBE_OP_R,
+};
+
+static void (*g_op_tab[])(CUBE *c) = {
+    cube_n, cube_f, cube_b, cube_u, cube_d, cube_l, cube_r,
+};
+
+static void cube_op(CUBE *c, int op)
+{
+    (g_op_tab[op])(c);
 }
 
 static void cube_rand(CUBE *c, int n) {
-    int i, r;
-    for (i=0; i<n; i++) {
-        r = rand() % 6;
-        switch (r) {
-        case 0 : cube_f(c); break;
-        case 1 : cube_b(c); break;
-        case 2 : cube_u(c); break;
-        case 3 : cube_d(c); break;
-        case 4 : cube_l(c); break;
-        case 5 : cube_r(c); break;
-        }
+    while (n-- > 0) {
+        cube_op(c, rand() % 6 + 1);
     }
 }
-
-static void cube_solve(CUBE *c) {}
 
 static void cube_render(CUBE *c)
 {
@@ -208,40 +196,15 @@ static void cube_render(CUBE *c)
     GetConsoleScreenBufferInfo(h, &csbiInfo);  
     wOldColorAttrs = csbiInfo.wAttributes;
 
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buffer[3+i][3+j] = c->f[i][j];
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buffer[3+i][9+j] = c->b[i][j];
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buffer[0+i][3+j] = c->u[i][j];
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buffer[6+i][3+j] = c->d[i][j];
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buffer[3+i][0+j] = c->l[i][j];
-        }
-    }
-    for (i=0; i<3; i++) {
-        for (j=0; j<3; j++) {
-            buffer[3+i][6+j] = c->r[i][j];
-        }
-    }
+    for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[3+i][3+j] = c->f[i][j];
+    for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[3+i][9+j] = c->b[i][j];
+    for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[0+i][3+j] = c->u[i][j];
+    for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[6+i][3+j] = c->d[i][j];
+    for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[3+i][0+j] = c->l[i][j];
+    for (i=0; i<3; i++) for (j=0; j<3; j++) buffer[3+i][6+j] = c->r[i][j];
 
     for (i=0; i<9; i++) {
         for (j=0; j<12; j++) {
-#if 1
             switch (buffer[i][j]) {
             case 'W': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE); break;
             case 'Y': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN); break;
@@ -251,10 +214,6 @@ static void cube_render(CUBE *c)
             case 'R': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED  ); break;
             }
             printf(buffer[i][j] ? "\2 " : "  ");
-#else
-            if (buffer[i][j]) printf("%02d ", buffer[i][j]);
-            else printf("   ");
-#endif
         }
         printf("\n");
     }
@@ -263,11 +222,161 @@ static void cube_render(CUBE *c)
     SetConsoleTextAttribute(h, wOldColorAttrs);
 }
 
+enum {
+    CUBE_STATE_CROSS,
+    CUBE_STATE_SOLVED,
+};
+
+static int cube_check_color(char *buf, int *checkarray, int size)
+{
+    int i;
+    for (i=1; i<size; i++) {
+        if (buf[checkarray[i]] != buf[checkarray[0]]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+static int cube_check_state(CUBE *cube, int state)
+{
+    static int cross[] = { 4, 1, 3, 5, 7 };
+    static int solve[] = { 4, 0, 1, 2, 3, 5, 6, 7, 8 };
+    int ret = 0;
+
+    switch (state) {
+    case CUBE_STATE_CROSS:
+        ret = cube_check_color(&(cube->f[0][0]), cross, 5);
+        break;
+    case CUBE_STATE_SOLVED:
+        ret = cube_check_color(&(cube->f[0][0]), solve, 9);
+        if (!ret) break;
+        ret = cube_check_color(&(cube->b[0][0]), solve, 9);
+        if (!ret) break;
+        ret = cube_check_color(&(cube->u[0][0]), solve, 9);
+        if (!ret) break;
+        ret = cube_check_color(&(cube->d[0][0]), solve, 9);
+        if (!ret) break;
+        ret = cube_check_color(&(cube->l[0][0]), solve, 9);
+        if (!ret) break;
+        ret = cube_check_color(&(cube->r[0][0]), solve, 9);
+        break;
+    }
+    return ret;
+}
+
+static int cube_check_same(CUBE *cube1, CUBE *cube2)
+{
+    int i, j;
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            if (cube1->f[i][j] != cube2->f[i][j]) return 0;
+            if (cube1->b[i][j] != cube2->b[i][j]) return 0;
+            if (cube1->u[i][j] != cube2->u[i][j]) return 0;
+            if (cube1->d[i][j] != cube2->d[i][j]) return 0;
+            if (cube1->l[i][j] != cube2->l[i][j]) return 0;
+            if (cube1->r[i][j] != cube2->r[i][j]) return 0;
+        }
+    }
+    return 1;
+}
+
+static int search_table_create(TABLE *table, int size)
+{
+    table->size  = size;
+    table->cubes = malloc(size * sizeof(CUBE));
+    return table->cubes ? 0 : -1;
+}
+
+static void search_table_destroy(TABLE *table)
+{
+    if (table->cubes) free(table->cubes);
+}
+
+static int isin_close_table(TABLE *table, CUBE *cube)
+{
+    int i;
+    for (i=0; i<table->close; i++) {
+        if (cube_check_same(cube, &table->cubes[i])) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static CUBE* search(TABLE *table, CUBE *orgcube, int state, char *oplist, int opnum)
+{
+    CUBE *curcube;
+    CUBE *newcube;
+    int   i;
+
+    if (cube_check_state(orgcube, state)) return orgcube;
+
+    // init search table
+    table->open  = 0;
+    table->close = 0;
+
+    // put original cube into open table
+    memcpy(&(table->cubes[table->open++]), orgcube, sizeof(CUBE));
+
+    while (table->close < table->open) {
+        // check memory usage
+        if (table->open + 6 >= table->size - 1) {
+            printf("all table memory have been used !\n");
+            break;
+        }
+
+        // dequeue a cube from open table
+        curcube = &(table->cubes[table->close++]);
+
+        // extend cubes check state and put new cubes into open table
+        for (i=0; i<opnum; i++) {
+            newcube = &(table->cubes[table->open]);
+            memcpy(newcube, curcube, sizeof(CUBE));
+            cube_op(newcube, oplist[i]);
+            if (cube_check_state(newcube, state)) {
+                newcube->op     = oplist[i];
+                newcube->parent = curcube;
+                return newcube;
+            }
+            if (!isin_close_table(table, newcube)) {
+                newcube->op     = oplist[i];
+                newcube->parent = curcube;
+                table->open++;
+            }
+        }
+    }
+    return NULL;
+}
+
+static void cube_solve(CUBE *c)
+{
+    TABLE t;
+    if (search_table_create(&t, 1024*1024*4) != 0) {
+        printf("failed to create cube search table !\n");
+        return;
+    }
+
+    if (1) {
+        static char oplist[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R };
+        CUBE *newcube = search(&t, c, CUBE_STATE_CROSS, oplist, 5);
+        if (newcube) {
+            memcpy(c, newcube, sizeof(CUBE));
+            printf("cube solved !\n");
+        } else {
+            printf("can't solve !\n");
+        }
+    }
+
+    search_table_destroy(&t);
+}
+
 int main(void)
 {
-    char cmd[128];
-    CUBE c;
+    char  cmd[128];
+    CUBE  c;
 
+    // init cube
     cube_init(&c);
 
     while (1) {
@@ -321,6 +430,8 @@ int main(void)
         }
         printf("\n");
     }
+
+    return 0;
 }
 
 
