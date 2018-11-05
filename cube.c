@@ -221,8 +221,8 @@ static int cube_check_color(char *buf, int *checkarray, int size)
 {
     int i;
     int n;
-    for (i=1,n=0; i<size; i++) {
-        if (buf[checkarray[i]] == buf[checkarray[0]]) {
+    for (i=0,n=0; i<size; i++) {
+        if (buf[checkarray[i]] == buf[4]) {
             n++;
         }
     }
@@ -231,22 +231,22 @@ static int cube_check_color(char *buf, int *checkarray, int size)
 
 static int cube_check_state(CUBE *cube, int state)
 {
-    static int cross[] = { 4, 1, 3, 5, 7 };
-    static int solve[] = { 4, 0, 1, 2, 3, 5, 6, 7, 8 };
+    static int cross[] = { 1, 3, 5, 7 };
+    static int solve[] = { 0, 1, 2, 3, 5, 6, 7, 8 };
     int ret;
 
     switch (state) {
     case CUBE_STATE_CROSS:
-        ret = cube_check_color(&(cube->f[0][0]), cross, 5);
+        ret = cube_check_color(&(cube->f[0][0]), cross, 4);
         if (ret == 4 ) ret = -1;
         break;
     case CUBE_STATE_SOLVED:
-        ret = cube_check_color(&(cube->f[0][0]), solve, 9);
-        ret+= cube_check_color(&(cube->b[0][0]), solve, 9);
-        ret+= cube_check_color(&(cube->u[0][0]), solve, 9);
-        ret+= cube_check_color(&(cube->d[0][0]), solve, 9);
-        ret+= cube_check_color(&(cube->l[0][0]), solve, 9);
-        ret+= cube_check_color(&(cube->r[0][0]), solve, 9);
+        ret = cube_check_color(&(cube->f[0][0]), solve, 8);
+        ret+= cube_check_color(&(cube->b[0][0]), solve, 8);
+        ret+= cube_check_color(&(cube->u[0][0]), solve, 8);
+        ret+= cube_check_color(&(cube->d[0][0]), solve, 8);
+        ret+= cube_check_color(&(cube->l[0][0]), solve, 8);
+        ret+= cube_check_color(&(cube->r[0][0]), solve, 8);
         if (ret == 48) ret = -1;
         break;
     }
