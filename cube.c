@@ -310,13 +310,6 @@ static int cube_check_state(CUBE *cube, int state)
     return ret;
 }
 
-#if 0
-static int cube_check_same(CUBE *cube1, CUBE *cube2)
-{
-    return memcmp(cube1, cube2, 3 * 3 * 6) == 0 ? 1 : 0;
-}
-#endif
-
 static void cube_copy(CUBE *cube1, CUBE *cube2)
 {
     memcpy(cube1, cube2, sizeof(CUBE));
@@ -359,7 +352,13 @@ static int is_4same_ops(CUBE *cube)
     return 0;
 }
 
-static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnum)
+typedef int (*PFN_CUT)(int curval, int newval);
+static int cut_0(int curval, int newval) { return newval < curval - 0; }
+static int cut_1(int curval, int newval) { return newval < curval - 1; }
+static int cut_2(int curval, int newval) { return newval < curval - 2; }
+static int cut_3(int curval, int newval) { return newval < curval - 3; }
+
+static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnum, PFN_CUT pfncut)
 {
     CUBE *curcube, *newcube;
     int   curval, newval, i;
@@ -403,6 +402,9 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
             if (is_4same_ops(newcube)) {
                 continue;
             }
+            if (pfncut && pfncut(curval, newval)) {
+                continue;
+            }
             table->open++;
         }
 //      printf("%d %d\n", table->close, table->open);
@@ -432,14 +434,15 @@ static void cube_solve(CUBE *c)
 {
     TABLE t;
 
-    if (search_table_create(&t, 1024*1024*16) != 0) {
+    if (search_table_create(&t, 1024*1024*32) != 0) {
         printf("failed to create cube search table !\n");
         return;
     }
 
     if (1) {
-        static char oplist[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B };
-        CUBE *cube = search(&t, c, CUBE_STATE_FCROSS0, oplist, 5);
+        static char oplist1[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B };
+        CUBE *cube = NULL;
+        cube = search(&t, c, CUBE_STATE_FCROSS0, oplist1, 5, NULL);
         if (cube) {
             cube_copy(c, cube);
             print_solve_oplist(cube);
@@ -448,7 +451,7 @@ static void cube_solve(CUBE *c)
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCROSS1, oplist, 5);
+        cube = search(&t, c, CUBE_STATE_FCROSS1, oplist1, 5, NULL);
         if (cube) {
             cube_copy(c, cube);
             print_solve_oplist(cube);
@@ -457,7 +460,7 @@ static void cube_solve(CUBE *c)
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER0, oplist, 6);
+        cube = search(&t, c, CUBE_STATE_FCORNER0, oplist1, 6, cut_3);
         if (cube) {
             cube_copy(c, cube);
             print_solve_oplist(cube);
@@ -466,7 +469,7 @@ static void cube_solve(CUBE *c)
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER1, oplist, 6);
+        cube = search(&t, c, CUBE_STATE_FCORNER1, oplist1, 6, cut_3);
         if (cube) {
             cube_copy(c, cube);
             print_solve_oplist(cube);
@@ -475,7 +478,7 @@ static void cube_solve(CUBE *c)
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER2, oplist, 6);
+        cube = search(&t, c, CUBE_STATE_FCORNER2, oplist1, 6, cut_3);
         if (cube) {
             cube_copy(c, cube);
             print_solve_oplist(cube);
@@ -484,7 +487,7 @@ static void cube_solve(CUBE *c)
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER3, oplist, 6);
+        cube = search(&t, c, CUBE_STATE_FCORNER3, oplist1, 6, cut_3);
         if (cube) {
             cube_copy(c, cube);
             print_solve_oplist(cube);
