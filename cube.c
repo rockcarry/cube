@@ -213,8 +213,13 @@ static void cube_render(CUBE *c)
 }
 
 enum {
-    CUBE_STATE_CROSS,
-    CUBE_STATE_SOLVED,
+    CUBE_STATE_FCROSS0 ,
+    CUBE_STATE_FCROSS1 ,
+    CUBE_STATE_FCORNER0,
+    CUBE_STATE_FCORNER1,
+    CUBE_STATE_FCORNER2,
+    CUBE_STATE_FCORNER3,
+    CUBE_STATE_SOLVED  ,
 };
 
 static int cube_check_color(char *buf, int *checkarray, int size)
@@ -236,9 +241,61 @@ static int cube_check_state(CUBE *cube, int state)
     int ret;
 
     switch (state) {
-    case CUBE_STATE_CROSS:
+    case CUBE_STATE_FCROSS0:
         ret = cube_check_color(&(cube->f[0][0]), cross, 4);
         if (ret == 4 ) ret = -1;
+        break;
+    case CUBE_STATE_FCROSS1:
+        ret = cube_check_color(&(cube->f[0][0]), cross, 4);
+        ret+= cube->u[1][1] == cube->u[2][1];
+        ret+= cube->d[1][1] == cube->d[0][1];
+        ret+= cube->l[1][1] == cube->l[1][2];
+        ret+= cube->r[1][1] == cube->r[1][0];
+        if (ret == 8 ) ret = -1;
+        break;
+    case CUBE_STATE_FCORNER0:
+        ret = cube_check_state(cube, CUBE_STATE_FCROSS1);
+        ret = ret == -1 ? 8 : ret;
+        if (  cube->f[1][1] == cube->f[0][0]
+           && cube->l[1][1] == cube->l[0][2]
+           && cube->u[1][1] == cube->u[2][0])
+        {
+            ret++;
+        }
+        if (ret == 9) return -1;
+        break;
+    case CUBE_STATE_FCORNER1:
+        ret = cube_check_state(cube, CUBE_STATE_FCORNER0);
+        ret = ret == -1 ? 9 : ret;
+        if (  cube->f[1][1] == cube->f[0][2]
+           && cube->r[1][1] == cube->r[0][0]
+           && cube->u[1][1] == cube->u[2][2])
+        {
+            ret++;
+        }
+        if (ret == 10) return -1;
+        break;
+    case CUBE_STATE_FCORNER2:
+        ret = cube_check_state(cube, CUBE_STATE_FCORNER1);
+        ret = ret == -1 ? 10 : ret;
+        if (  cube->f[1][1] == cube->f[2][2]
+           && cube->r[1][1] == cube->r[2][0]
+           && cube->d[1][1] == cube->d[0][2])
+        {
+            ret++;
+        }
+        if (ret == 11) return -1;
+        break;
+    case CUBE_STATE_FCORNER3:
+        ret = cube_check_state(cube, CUBE_STATE_FCORNER2);
+        ret = ret == -1 ? 11 : ret;
+        if (  cube->f[1][1] == cube->f[2][0]
+           && cube->l[1][1] == cube->l[2][2]
+           && cube->d[1][1] == cube->d[0][0])
+        {
+            ret++;
+        }
+        if (ret == 12) return -1;
         break;
     case CUBE_STATE_SOLVED:
         ret = cube_check_color(&(cube->f[0][0]), solve, 8);
@@ -307,6 +364,8 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
     CUBE *curcube, *newcube;
     int   curval, newval, i;
 
+    start->parent = NULL;
+    start->op     = 'N' ;
     if (cube_check_state(start, state) == -1) return start;
 
     // init search table
@@ -341,8 +400,7 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
             if (newval == -1) { // found
                 return newcube;
             }
-            if (  curval - newval > 0
-               || is_4same_ops(newcube) ) {
+            if (is_4same_ops(newcube)) {
                 continue;
             }
             table->open++;
@@ -352,40 +410,91 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
     return NULL;
 }
 
+static void print_solve_oplist(CUBE *cube)
+{
+    char oplist[256];
+    int  i = 0, n = 0;
+    while (cube) {
+        static char optab[] = { 'N', 'F', 'B', 'U', 'D', 'L', 'R' };
+        if (cube->op) {
+            oplist[i++] = optab[(int)cube->op];
+        }
+        cube = cube->parent;
+    }
+    printf("\noperation list:\n");
+    while (--i >= 0) {
+        printf("%c%s%s", oplist[i], i == 0 ? "" : " -> ", ++n % 12 == 0 ? "\n" : "");
+    }
+    printf("\n");
+}
+
 static void cube_solve(CUBE *c)
 {
     TABLE t;
 
-    if (search_table_create(&t, 1024*1024*8) != 0) {
+    if (search_table_create(&t, 1024*1024*16) != 0) {
         printf("failed to create cube search table !\n");
         return;
     }
 
     if (1) {
-        static char oplist[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R };
-        CUBE *cube = search(&t, c, CUBE_STATE_CROSS, oplist, 5);
+        static char oplist[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B };
+        CUBE *cube = search(&t, c, CUBE_STATE_FCROSS0, oplist, 5);
         if (cube) {
-            char  oplist[256];
-            int   i = 0, n = 0;
             cube_copy(c, cube);
-            while (cube) {
-                static char optab[] = { 'N', 'F', 'B', 'U', 'D', 'L', 'R' };
-                if (cube->op) {
-                    oplist[i++] = optab[(int)cube->op];
-                }
-                cube = cube->parent;
-            }
-            printf("\noperation list:\n");
-            while (--i >= 0) {
-                printf("%c%s%s", oplist[i], i == 0 ? "" : " -> ", ++n % 12 == 0 ? "\n" : "");
-            }
-            printf("\n");
-            printf("cube solved !\n");
+            print_solve_oplist(cube);
         } else {
             printf("can't solve !\n");
+            goto done;
+        }
+
+        cube = search(&t, c, CUBE_STATE_FCROSS1, oplist, 5);
+        if (cube) {
+            cube_copy(c, cube);
+            print_solve_oplist(cube);
+        } else {
+            printf("can't solve !\n");
+            goto done;
+        }
+
+        cube = search(&t, c, CUBE_STATE_FCORNER0, oplist, 6);
+        if (cube) {
+            cube_copy(c, cube);
+            print_solve_oplist(cube);
+        } else {
+            printf("can't solve !\n");
+            goto done;
+        }
+
+        cube = search(&t, c, CUBE_STATE_FCORNER1, oplist, 6);
+        if (cube) {
+            cube_copy(c, cube);
+            print_solve_oplist(cube);
+        } else {
+            printf("can't solve !\n");
+            goto done;
+        }
+
+        cube = search(&t, c, CUBE_STATE_FCORNER2, oplist, 6);
+        if (cube) {
+            cube_copy(c, cube);
+            print_solve_oplist(cube);
+        } else {
+            printf("can't solve !\n");
+            goto done;
+        }
+
+        cube = search(&t, c, CUBE_STATE_FCORNER3, oplist, 6);
+        if (cube) {
+            cube_copy(c, cube);
+            print_solve_oplist(cube);
+        } else {
+            printf("can't solve !\n");
+            goto done;
         }
     }
 
+done:
     search_table_destroy(&t);
 }
 
