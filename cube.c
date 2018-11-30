@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#pragma pack(1)
 typedef struct tagCUBE {
     char f[3][3];
     char b[3][3];
@@ -11,10 +10,83 @@ typedef struct tagCUBE {
     char d[3][3];
     char l[3][3];
     char r[3][3];
-    char op;
-    struct tagCUBE *parent;
 } CUBE;
+
+//++ ZUBE is data compressed of CUBE
+#pragma pack(1)
+typedef struct tagZUBE {
+    struct tagZUBE *parent;
+    char f[3];
+    char b[3];
+    char u[3];
+    char d[3];
+    char l[3];
+    char r[3];
+    char op  ;
+} ZUBE;
 #pragma pack()
+
+static void encode_surface(char *dst, char *src)
+{
+    int i, n;
+    dst[0] = dst[1] = dst[2] = 0;
+    for (i=0,n=0; i<9; i++) {
+        if (i == 4) continue;
+        dst[0] |= ((src[i] >> 0) & 1) << n;
+        dst[1] |= ((src[i] >> 1) & 1) << n;
+        dst[2] |= ((src[i] >> 2) & 1) << n;
+        n++;
+    }
+}
+
+static void decode_surface(char *dst, char *src)
+{
+    int i, n;
+    for (i=0,n=0; i<9; i++) {
+        if (i == 4) continue;
+        dst[i] = (((src[0] >> n) & 1) << 0)
+               | (((src[1] >> n) & 1) << 1)
+               | (((src[2] >> n) & 1) << 2);
+        n++;
+    }
+}
+
+static void cube2zube(ZUBE *z, CUBE *c, char *center)
+{
+    encode_surface(z->f, (char*)c->f);
+    encode_surface(z->b, (char*)c->b);
+    encode_surface(z->u, (char*)c->u);
+    encode_surface(z->d, (char*)c->d);
+    encode_surface(z->l, (char*)c->l);
+    encode_surface(z->r, (char*)c->r);
+    if (center) {
+        center[0] = c->f[1][1];
+        center[1] = c->b[1][1];
+        center[2] = c->u[1][1];
+        center[3] = c->d[1][1];
+        center[4] = c->l[1][1];
+        center[5] = c->r[1][1];
+    }
+}
+
+static void zube2cube(CUBE *c, ZUBE *z, char *center)
+{
+    decode_surface((char*)c->f, z->f);
+    decode_surface((char*)c->b, z->b);
+    decode_surface((char*)c->u, z->u);
+    decode_surface((char*)c->d, z->d);
+    decode_surface((char*)c->l, z->l);
+    decode_surface((char*)c->r, z->r);
+    if (center) {
+        c->f[1][1] = center[0];
+        c->b[1][1] = center[1];
+        c->u[1][1] = center[2];
+        c->d[1][1] = center[3];
+        c->l[1][1] = center[4];
+        c->r[1][1] = center[5];
+    }
+}
+//-- ZUBE is data compressed of CUBE
 
 typedef struct {
     int   stride;
@@ -52,14 +124,15 @@ static void surface_rotate90(char buf[3][3])
     }
 }
 
+// W Y G B R O
 static void cube_init(CUBE *c)
 {
-    memset(c->f, 'W', sizeof(c->f));
-    memset(c->b, 'Y', sizeof(c->b));
-    memset(c->u, 'G', sizeof(c->u));
-    memset(c->d, 'B', sizeof(c->d));
-    memset(c->l, 'R', sizeof(c->l));
-    memset(c->r, 'O', sizeof(c->r));
+    memset(c->f, 1, sizeof(c->f));
+    memset(c->b, 2, sizeof(c->b));
+    memset(c->u, 3, sizeof(c->u));
+    memset(c->d, 4, sizeof(c->d));
+    memset(c->l, 5, sizeof(c->l));
+    memset(c->r, 6, sizeof(c->r));
 }
 
 static void cube_n(CUBE *c) { /* nop, do nothing */ }
@@ -196,12 +269,12 @@ static void cube_render(CUBE *c)
     for (i=0; i<9; i++) {
         for (j=0; j<12; j++) {
             switch (buffer[i][j]) {
-            case 'W': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE); break;
-            case 'Y': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN); break;
-            case 'G': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_GREEN); break;
-            case 'O': SetConsoleTextAttribute(h, FOREGROUND_RED|FOREGROUND_BLUE ); break;
-            case 'B': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_BLUE ); break;
-            case 'R': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED  ); break;
+            case 1: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE); break;
+            case 2: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN); break;
+            case 3: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_GREEN); break;
+            case 4: SetConsoleTextAttribute(h, FOREGROUND_RED|FOREGROUND_BLUE ); break;
+            case 5: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_BLUE ); break;
+            case 6: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED  ); break;
             }
             printf(buffer[i][j] ? "\2 " : "  ");
         }
@@ -319,34 +392,35 @@ typedef struct {
     int   open ;
     int   close;
     int   size ;
-    CUBE *cubes;
+    ZUBE *zubes;
+    char  center[6];
 } TABLE;
 
 static int search_table_create(TABLE *table, int size)
 {
     table->size  = size;
-    table->cubes = malloc(size * sizeof(CUBE));
-    return table->cubes ? 0 : -1;
+    table->zubes = malloc(size * sizeof(ZUBE));
+    return table->zubes ? 0 : -1;
 }
 
 static void search_table_destroy(TABLE *table)
 {
-    if (table->cubes) {
-        free(table->cubes);
-        table->cubes = NULL;
+    if (table->zubes) {
+        free(table->zubes);
+        table->zubes = NULL;
     }
 }
 
-static int is_4same_ops(CUBE *cube)
+static int is_4same_ops(ZUBE *zube)
 {
-    int curop = cube->op;
+    int curop = zube->op;
     int n     = 0;
-    while (cube) {
-        if (cube->op == curop) {
+    while (zube) {
+        if (zube->op == curop) {
             if (++n == 4) {
                 return 1;
             }
-            cube = cube->parent;
+            zube = zube->parent;
         } else break;
     }
     return 0;
@@ -358,23 +432,25 @@ static int cut_1(int curval, int newval) { return newval < curval - 1; }
 static int cut_2(int curval, int newval) { return newval < curval - 2; }
 static int cut_3(int curval, int newval) { return newval < curval - 3; }
 
-static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnum, PFN_CUT pfncut)
+static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnum, PFN_CUT pfncut)
 {
-    CUBE *curcube, *newcube;
-    int   curval, newval, i;
+    CUBE  curcube, newcube;
+    ZUBE *curzube,*newzube;
+    int  curval, newval, i;
 
     start->parent = NULL;
     start->op     = 'N' ;
-    if (cube_check_state(start, state) == -1) return start;
+    zube2cube(&curcube, start, table->center);
+    if (cube_check_state(&curcube, state) == -1) return start;
 
     // init search table
     table->open  = 0;
     table->close = 0;
 
     // put original cube into open table
-    cube_copy(&(table->cubes[table->open]), start);
-    table->cubes[table->open].op     = 0;
-    table->cubes[table->open].parent = NULL;
+    memcpy(&table->zubes[table->open], start, sizeof(ZUBE));
+    table->zubes[table->open].op     = 0;
+    table->zubes[table->open].parent = NULL;
     table->open++;
 
     while (table->close < table->open) {
@@ -385,21 +461,23 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
         }
 
         // dequeue a cube from open table
-        curcube = &(table->cubes[table->close++]);
-        curval  = cube_check_state(curcube, state);
+        curzube = &(table->zubes[table->close++]);
+        zube2cube(&curcube, curzube, NULL);
+        curval  = cube_check_state(&curcube, state);
 
         // extend cubes check state and put new cubes into open table
         for (i=0; i<opnum; i++) {
-            newcube = &(table->cubes[table->open]);
-            cube_copy(newcube, curcube  );
-            cube_op  (newcube, oplist[i]);
-            newcube->op     = oplist[i];
-            newcube->parent = curcube;
-            newval = cube_check_state(newcube, state);
+            newzube = &(table->zubes[table->open]);
+            cube_copy(&newcube, &curcube );
+            cube_op  (&newcube, oplist[i]);
+            cube2zube(newzube, &newcube, NULL);
+            newzube->op     = oplist[i];
+            newzube->parent = curzube;
+            newval = cube_check_state(&newcube, state);
             if (newval == -1) { // found
-                return newcube;
+                return newzube;
             }
-            if (is_4same_ops(newcube)) {
+            if (is_4same_ops(newzube)) {
                 continue;
             }
             if (pfncut && pfncut(curval, newval)) {
@@ -412,16 +490,16 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
     return NULL;
 }
 
-static void print_solve_oplist(CUBE *cube)
+static void print_solve_oplist(ZUBE *zube)
 {
     char oplist[256];
     int  i = 0, n = 0;
-    while (cube) {
+    while (zube) {
         static char optab[] = { 'N', 'F', 'B', 'U', 'D', 'L', 'R' };
-        if (cube->op) {
-            oplist[i++] = optab[(int)cube->op];
+        if (zube->op) {
+            oplist[i++] = optab[(int)zube->op];
         }
-        cube = cube->parent;
+        zube = zube->parent;
     }
     printf("\noperation list:\n");
     while (--i >= 0) {
@@ -434,71 +512,91 @@ static void cube_solve(CUBE *c)
 {
     TABLE t;
 
-    if (search_table_create(&t, 1024*1024*32) != 0) {
+    if (search_table_create(&t, 1024*1024*82) != 0) {
         printf("failed to create cube search table !\n");
         return;
     }
 
     if (1) {
         static char oplist1[] = { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B };
-        CUBE *cube = NULL;
-        cube = search(&t, c, CUBE_STATE_FCROSS0, oplist1, 5, NULL);
-        if (cube) {
-            cube_copy(c, cube);
-            print_solve_oplist(cube);
+        ZUBE  start = {0};
+        ZUBE *find  = NULL;
+        cube2zube(&start, c, t.center);
+        find = search(&t, &start, CUBE_STATE_FCROSS0, oplist1, 5, NULL);
+        if (find) {
+            memcpy(&start, find, sizeof(ZUBE));
+            print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCROSS1, oplist1, 5, NULL);
-        if (cube) {
-            cube_copy(c, cube);
-            print_solve_oplist(cube);
+        find = search(&t, &start, CUBE_STATE_FCROSS1, oplist1, 5, NULL);
+        if (find) {
+            memcpy(&start, find, sizeof(ZUBE));
+            print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER0, oplist1, 6, cut_3);
-        if (cube) {
-            cube_copy(c, cube);
-            print_solve_oplist(cube);
+        find = search(&t, &start, CUBE_STATE_FCORNER0, oplist1, 6, cut_3);
+        if (find) {
+            memcpy(&start, find, sizeof(ZUBE));
+            print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER1, oplist1, 6, cut_3);
-        if (cube) {
-            cube_copy(c, cube);
-            print_solve_oplist(cube);
+        find = search(&t, &start, CUBE_STATE_FCORNER1, oplist1, 6, cut_3);
+        if (find) {
+            memcpy(&start, find, sizeof(ZUBE));
+            print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER2, oplist1, 6, cut_3);
-        if (cube) {
-            cube_copy(c, cube);
-            print_solve_oplist(cube);
+        find = search(&t, &start, CUBE_STATE_FCORNER2, oplist1, 6, cut_3);
+        if (find) {
+            memcpy(&start, find, sizeof(ZUBE));
+            print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
             goto done;
         }
 
-        cube = search(&t, c, CUBE_STATE_FCORNER3, oplist1, 6, cut_3);
-        if (cube) {
-            cube_copy(c, cube);
-            print_solve_oplist(cube);
+        find = search(&t, &start, CUBE_STATE_FCORNER3, oplist1, 6, cut_3);
+        if (find) {
+            memcpy(&start, find, sizeof(ZUBE));
+            print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
             goto done;
         }
+        zube2cube(c, find, t.center);
     }
 
 done:
     search_table_destroy(&t);
+}
+
+static void convert_input(char s[3][3])
+{
+    int i, j;
+    for (i=0; i<3; i++) {
+        for (j=0; j<3; j++) {
+            switch (s[i][j]) {
+            case 'w': case 'W': s[i][j] = 1; break;
+            case 'y': case 'Y': s[i][j] = 2; break;
+            case 'g': case 'G': s[i][j] = 3; break;
+            case 'b': case 'B': s[i][j] = 4; break;
+            case 'r': case 'R': s[i][j] = 5; break;
+            case 'o': case 'O': s[i][j] = 6; break;
+            }
+        }
+    }
 }
 
 static void cube_input(CUBE *c)
@@ -546,6 +644,13 @@ static void cube_input(CUBE *c)
         &(c->r[1][0]), &(c->r[1][1]), &(c->r[1][2]),
         &(c->r[2][0]), &(c->r[2][1]), &(c->r[2][2]));
     gets(str);
+
+    convert_input(c->f);
+    convert_input(c->b);
+    convert_input(c->u);
+    convert_input(c->d);
+    convert_input(c->l);
+    convert_input(c->r);
 }
 
 static void show_help(void)
