@@ -96,7 +96,6 @@ typedef struct {
 static void line_rotate90(LINEITEM item[5])
 {
     int i, j;
-
     for (i=0; i<5; i++) {
         int   dst_idx    = (i+0) % 5;
         int   src_idx    = (i+1) % 5;
@@ -134,8 +133,6 @@ static void cube_init(CUBE *c)
     memset(c->l, 5, sizeof(c->l));
     memset(c->r, 6, sizeof(c->r));
 }
-
-static void cube_n(CUBE *c) { /* nop, do nothing */ }
 
 static void cube_f(CUBE *c)
 {
@@ -222,7 +219,6 @@ static void cube_r(CUBE *c)
 }
 
 enum {
-    CUBE_OP_N,
     CUBE_OP_F,
     CUBE_OP_B,
     CUBE_OP_U,
@@ -231,20 +227,9 @@ enum {
     CUBE_OP_R,
 };
 
-static void (*g_op_tab[])(CUBE *c) = {
-    cube_n, cube_f, cube_b, cube_u, cube_d, cube_l, cube_r,
-};
-
-static void cube_op(CUBE *c, int op)
-{
-    (g_op_tab[op])(c);
-}
-
-static void cube_rand(CUBE *c, int n) {
-    while (n-- > 0) {
-        cube_op(c, rand() % 6 + 1);
-    }
-}
+static void (*g_op_tab[])(CUBE *c) = { cube_f, cube_b, cube_u, cube_d, cube_l, cube_r };
+static void cube_op  (CUBE *c, int op) { (g_op_tab[op])(c); }
+static void cube_rand(CUBE *c, int n ) { while (n-- > 0) cube_op(c, rand() % 6); }
 
 static void cube_render(CUBE *c)
 {
@@ -297,8 +282,7 @@ enum {
 
 static int cube_check_color(char *buf, int *checkarray, int size)
 {
-    int i;
-    int n;
+    int i, n;
     for (i=0,n=0; i<size; i++) {
         if (buf[checkarray[i]] == buf[4]) {
             n++;
@@ -383,11 +367,6 @@ static int cube_check_state(CUBE *cube, int state)
     return ret;
 }
 
-static void cube_copy(CUBE *cube1, CUBE *cube2)
-{
-    memcpy(cube1, cube2, sizeof(CUBE));
-}
-
 typedef struct {
     int   open ;
     int   close;
@@ -439,7 +418,7 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
     int  curval, newval, i;
 
     start->parent = NULL;
-    start->op     = 'N' ;
+    start->op     = -1;
     zube2cube(&curcube, start, table->center);
     if (cube_check_state(&curcube, state) == -1) return start;
 
@@ -448,9 +427,7 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
     table->close = 0;
 
     // put original cube into open table
-    memcpy(&table->zubes[table->open], start, sizeof(ZUBE));
-    table->zubes[table->open].op     = 0;
-    table->zubes[table->open].parent = NULL;
+    table->zubes[table->open] = *start;
     table->open++;
 
     while (table->close < table->open) {
@@ -468,7 +445,7 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
         // extend cubes check state and put new cubes into open table
         for (i=0; i<opnum; i++) {
             newzube = &(table->zubes[table->open]);
-            cube_copy(&newcube, &curcube );
+            newcube = curcube;
             cube_op  (&newcube, oplist[i]);
             cube2zube(newzube, &newcube, NULL);
             newzube->op     = oplist[i];
@@ -495,8 +472,8 @@ static void print_solve_oplist(ZUBE *zube)
     char oplist[256];
     int  i = 0, n = 0;
     while (zube) {
-        static char optab[] = { 'N', 'F', 'B', 'U', 'D', 'L', 'R' };
-        if (zube->op) {
+        static char optab[] = { 'F', 'B', 'U', 'D', 'L', 'R' };
+        if (zube->op >= 0) {
             oplist[i++] = optab[(int)zube->op];
         }
         zube = zube->parent;
@@ -524,7 +501,7 @@ static void cube_solve(CUBE *c)
         cube2zube(&start, c, t.center);
         find = search(&t, &start, CUBE_STATE_FCROSS0, oplist1, 5, NULL);
         if (find) {
-            memcpy(&start, find, sizeof(ZUBE));
+            start = *find;
             print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
@@ -533,7 +510,7 @@ static void cube_solve(CUBE *c)
 
         find = search(&t, &start, CUBE_STATE_FCROSS1, oplist1, 5, NULL);
         if (find) {
-            memcpy(&start, find, sizeof(ZUBE));
+            start = *find;
             print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
@@ -542,7 +519,7 @@ static void cube_solve(CUBE *c)
 
         find = search(&t, &start, CUBE_STATE_FCORNER0, oplist1, 6, cut_3);
         if (find) {
-            memcpy(&start, find, sizeof(ZUBE));
+            start = *find;
             print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
@@ -551,7 +528,7 @@ static void cube_solve(CUBE *c)
 
         find = search(&t, &start, CUBE_STATE_FCORNER1, oplist1, 6, cut_3);
         if (find) {
-            memcpy(&start, find, sizeof(ZUBE));
+            start = *find;
             print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
@@ -560,7 +537,7 @@ static void cube_solve(CUBE *c)
 
         find = search(&t, &start, CUBE_STATE_FCORNER2, oplist1, 6, cut_3);
         if (find) {
-            memcpy(&start, find, sizeof(ZUBE));
+            start = *find;
             print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
@@ -569,7 +546,7 @@ static void cube_solve(CUBE *c)
 
         find = search(&t, &start, CUBE_STATE_FCORNER3, oplist1, 6, cut_3);
         if (find) {
-            memcpy(&start, find, sizeof(ZUBE));
+            start = *find;
             print_solve_oplist(find);
         } else {
             printf("can't solve !\n");
