@@ -598,18 +598,31 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
 
 static void print_solve_oplist(ZUBE *zube)
 {
-    char oplist[256];
-    int  i = 0, n = 0;
+    static char* optab[] = {
+        "F" , "B" , "U" , "D" , "L" , "R" ,
+        "F2", "B2", "U2", "D2", "L2", "R2",
+        "F'", "B'", "U'", "D'", "L'", "R'",
+    };
+    char *oplist[256];
+    int   last = -1, times = 0, i = 0, n = 0;
     while (zube) {
-        static char optab[] = { 'F', 'B', 'U', 'D', 'L', 'R' };
         if (zube->op >= 0) {
-            oplist[i++] = optab[(int)zube->op];
+            if (last != zube->op) {
+                if (last != -1) {
+                    oplist[i++] = optab[last + times * 6];
+                }
+                last = zube->op;
+                times= 0;
+            } else {
+                times++;
+            }
         }
         zube = zube->parent;
     }
+    oplist[i++] = optab[last + times * 6];
     printf("\noperation list:\n");
     while (--i >= 0) {
-        printf("%c%s%s", oplist[i], i == 0 ? "" : " -> ", ++n % 12 == 0 ? "\n" : "");
+        printf("%s%s%s", oplist[i], i == 0 ? "" : " -> ", ++n % 12 == 0 ? "\n" : "");
     }
     printf("\n");
 }
