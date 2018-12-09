@@ -574,7 +574,7 @@ static void cube_solve(CUBE *c)
                 start = *find;
                 print_solve_oplist(find);
                 zube2cube(c, find, t.center);
-                cube_render(c);
+                if (stepparams[i][0] != 24) cube_render(c);
             } else {
                 printf("can't solve !\n");
                 goto done;
