@@ -265,7 +265,7 @@ static void cube_render(CUBE *c)
         printf("\n");
     }
 
-    // Restore the original color
+    // restore the original color
     SetConsoleTextAttribute(h, wOldColorAttrs);
 }
 
@@ -292,8 +292,7 @@ static int cube_check_fcross1(CUBE *cube)
         { cube->r[1][1], cube->r[1][0] },
         { cube->d[1][1], cube->d[0][1] },
     };
-    int value = cube_check_fcross0(cube), i;
-    if (value < 4) return value;
+    int value = 0, i;
     for (i=0; i<4; i++) {
         value += (checklist[i][0] == checklist[i][1]);
     }
@@ -324,8 +323,7 @@ static int cube_check_fcorners(CUBE *cube)
             { cube->d[1][1], cube->d[0][2] },
         },
     };
-    int value = cube_check_fcross1(cube), i, j;
-    if (value < 8) return value;
+    int value = 0, i, j;
     for (j=0; j<4; j++) {
         value++;
         for (i=0; i<3; i++) {
@@ -335,7 +333,7 @@ static int cube_check_fcorners(CUBE *cube)
     return value;
 }
 
-static int cube_check_edges(CUBE *cube)
+static int cube_check_medges(CUBE *cube)
 {
     int checklist[][2][2] = {
         {
@@ -355,8 +353,7 @@ static int cube_check_edges(CUBE *cube)
             { cube->d[1][1], cube->d[1][2] },
         },
     };
-    int value = cube_check_fcorners(cube), i, j;
-    if (value < 12) return value;
+    int value = 0, i, j;
     for (j=0; j<4; j++) {
         value++;
         for (i=0; i<2; i++) {
@@ -378,8 +375,7 @@ static int cube_check_bcross(CUBE *cube)
             { cube->b[1][1], cube->b[1][2] },
         },
     };
-    int value = cube_check_edges(cube), i, j;
-    if (value < 16) return value;
+    int value = 0, i, j;
     for (j=0; j<2; j++) {
         value += 2;
         for (i=0; i<2; i++) {
@@ -389,7 +385,7 @@ static int cube_check_bcross(CUBE *cube)
     return value;
 }
 
-static int cube_check_back(CUBE *cube)
+static int cube_check_bsurface(CUBE *cube)
 {
     int checklist[][2] = {
         { cube->b[1][1], cube->b[0][0] },
@@ -397,18 +393,108 @@ static int cube_check_back(CUBE *cube)
         { cube->b[1][1], cube->b[2][0] },
         { cube->b[1][1], cube->b[2][2] },
     };
-    int value = cube_check_bcross(cube), i;
-    if (value < 20) return value;
+    int value = 0, i;
     for (i=0; i<4; i++) {
         value += (checklist[i][0] == checklist[i][1]);
     }
-    if (value == 22) value = 20;
+    if (value == 2) value = 0;
     return value;
 }
 
-static int cube_check_state(CUBE *cube)
+static int cube_check_bcorners(CUBE *cube)
 {
-    return cube_check_back(cube);
+    int checklist[][3][2] = {
+        {
+            { cube->b[1][1], cube->b[0][2] },
+            { cube->l[1][1], cube->l[0][0] },
+            { cube->u[1][1], cube->u[0][0] },
+        },
+        {
+            { cube->b[1][1], cube->b[0][0] },
+            { cube->u[1][1], cube->u[0][2] },
+            { cube->r[1][1], cube->r[0][2] },
+        },
+        {
+            { cube->b[1][1], cube->b[2][0] },
+            { cube->r[1][1], cube->r[2][2] },
+            { cube->d[1][1], cube->d[2][2] },
+        },
+        {
+            { cube->b[1][1], cube->b[2][2] },
+            { cube->l[1][1], cube->l[2][0] },
+            { cube->d[1][1], cube->d[2][0] },
+        },
+    };
+    int returned[4] = { 1, 1, 1, 1 };
+    int value = 0, flag = 0, i, j;
+    for (j=0; j<4; j++) {
+        value++;
+        for (i=0; i<3; i++) {
+            if (checklist[j][i][0] != checklist[j][i][1]) { value--; returned[j] = 0; break; }
+        }
+    }
+    for (i=0; i<4; i++) {
+        if (returned[i] && returned[(i+1)%4]) flag = 1;
+    }
+    return flag ? value : 0;
+}
+
+static int cube_check_bedges(CUBE *cube)
+{
+    int checklist[][2][2] = {
+        {
+            { cube->u[1][1], cube->u[0][1] },
+            { cube->b[1][1], cube->b[0][1] },
+        },
+        {
+            { cube->d[1][1], cube->d[2][1] },
+            { cube->b[1][1], cube->b[2][1] },
+        },
+        {
+            { cube->l[1][1], cube->l[1][0] },
+            { cube->b[1][1], cube->b[1][2] },
+        },
+        {
+            { cube->r[1][1], cube->r[1][2] },
+            { cube->b[1][1], cube->d[1][0] },
+        },
+    };
+    int value = 0, i, j;
+    for (j=0; j<4; j++) {
+        value++;
+        for (i=0; i<2; i++) {
+            if (checklist[j][i][0] != checklist[j][i][1]) { value--; break; }
+        }
+    }
+    return value;
+}
+
+static int cube_check_state(CUBE *cube, int flag)
+{
+    int (*pfn_check_tab[])(CUBE* cube) = {
+        cube_check_fcross0 ,
+        cube_check_fcross1 ,
+        cube_check_fcorners,
+        cube_check_medges  ,
+        cube_check_bcross  ,
+        cube_check_bsurface,
+        cube_check_bcorners,
+        cube_check_bedges  ,
+        NULL,
+    };
+    int value = 0, cur, i;
+    for (i=0; pfn_check_tab[i]; i++) {
+        if (flag) {
+            value += pfn_check_tab[i](cube);
+            cur   += 4;
+            if (cur >= flag) break;
+        } else {
+            cur    = pfn_check_tab[i](cube);
+            value += cur;
+            if (cur != 4) break;
+        }
+    }
+    return value;
 }
 
 typedef struct {
@@ -449,26 +535,21 @@ static int is_4same_ops(ZUBE *zube)
     return 0;
 }
 
-static int cut_branch(int type, int curval, int newval)
+static int cut_branch(int newval, int cutval)
 {
-    switch (type) {
-    case 0 : return 0;
-    case 1 : return newval < 2;
-    case 2 : return newval < 3;
-    default: return 0;
-    }
+    return newval < cutval;
 }
 
-static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnum, int cuttype)
+static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnum, int cutval)
 {
     CUBE  curcube, newcube;
     ZUBE *curzube,*newzube;
-    int   curval , newval, i;
+    int   newstate, newvalue, i;
 
     start->parent = NULL;
     start->op     = -1;
     zube2cube(&curcube, start, table->center);
-    if (cube_check_state(&curcube) >= state) return start;
+    if (cube_check_state(&curcube, 0) >= state) return start;
 
     // init search table
     table->open  = 0;
@@ -488,7 +569,6 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
         // dequeue a cube from open table
         curzube = &(table->zubes[table->close++]);
         zube2cube(&curcube, curzube, NULL);
-        curval  = cube_check_state(&curcube);
 
         // extend cubes check state and put new cubes into open table
         for (i=0; i<opnum; i++) {
@@ -498,14 +578,15 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
             cube2zube(newzube, &newcube, NULL);
             newzube->op     = oplist[i];
             newzube->parent = curzube;
-            newval = cube_check_state(&newcube);
-            if (newval >= state) { // found
+            newstate = cube_check_state(&newcube, 0    );
+            newvalue = cube_check_state(&newcube, state);
+            if (newstate >= state) { // found
                 return newzube;
             }
             if (is_4same_ops(newzube)) {
                 continue;
             }
-            if (cut_branch(cuttype, curval, newval)) {
+            if (cut_branch(newvalue, cutval)) {
                 continue;
             }
             table->open++;
@@ -544,24 +625,29 @@ static void cube_solve(CUBE *c)
 
     if (1) {
         static char oplisttab[][6] = {
-            { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R },
-            { CUBE_OP_B, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R },
+            { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B },
+            { CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B },
         };
         static int stepparams[][4] = {
-            { 4 , 0, 5, 0 },
-            { 8 , 0, 5, 1 },
-            { 9 , 1, 5, 2 },
-            { 10, 1, 5, 2 },
-            { 11, 1, 5, 2 },
-            { 12, 1, 5, 2 },
-            { 13, 1, 5, 2 },
-            { 14, 1, 5, 2 },
-            { 15, 1, 5, 2 },
-            { 16, 1, 5, 2 },
-            { 18, 1, 5, 2 },
-            { 20, 1, 5, 2 },
-            { 21, 1, 5, 2 },
-            { 24, 1, 5, 2 },
+            { 2 , 0, 6, 0 }, //+ fcross0
+            { 4 , 0, 6, 2 }, //- fcross0
+            { 6 , 0, 6, 3 }, //+ fcross1
+            { 8 , 0, 6, 3 }, //- fcross0
+            { 9 , 0, 6, 5 }, //+ fcorners
+            { 10, 0, 6, 5 }, //..
+            { 11, 0, 6, 5 }, //..
+            { 12, 0, 6, 5 }, //- fcorners
+            { 13, 1, 5, 6 }, //+ medges
+            { 14, 1, 5, 6 }, //..
+            { 15, 1, 5, 7 }, //..
+            { 16, 1, 5, 8 }, //- medges
+            { 18, 1, 5, 10}, //+ bcross
+            { 20, 1, 5, 10}, //- bcross
+            { 21, 1, 5, 10}, //+ bsurface
+            { 24, 1, 5, 10}, //- bsurface
+            { 26, 1, 5, 12}, //+ bcorners
+            { 28, 1, 5, 12}, //- bcorners
+//          { 32, 1, 5, 14}, //+-bedges
             { 0 , 0, 0, 0 },
         };
         ZUBE  start = {0};
@@ -574,7 +660,7 @@ static void cube_solve(CUBE *c)
                 start = *find;
                 print_solve_oplist(find);
                 zube2cube(c, find, t.center);
-                if (stepparams[i][0] != 24) cube_render(c);
+                if (stepparams[i][0] != 32) cube_render(c);
             } else {
                 printf("can't solve !\n");
                 goto done;
