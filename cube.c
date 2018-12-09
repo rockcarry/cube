@@ -389,9 +389,26 @@ static int cube_check_bcross(CUBE *cube)
     return value;
 }
 
+static int cube_check_back(CUBE *cube)
+{
+    int checklist[][2] = {
+        { cube->b[1][1], cube->b[0][0] },
+        { cube->b[1][1], cube->b[0][2] },
+        { cube->b[1][1], cube->b[2][0] },
+        { cube->b[1][1], cube->b[2][2] },
+    };
+    int value = cube_check_bcross(cube), i;
+    if (value < 20) return value;
+    for (i=0; i<4; i++) {
+        value += (checklist[i][0] == checklist[i][1]);
+    }
+    if (value == 22) value = 20;
+    return value;
+}
+
 static int cube_check_state(CUBE *cube)
 {
-    return cube_check_bcross(cube);
+    return cube_check_back(cube);
 }
 
 typedef struct {
@@ -543,6 +560,8 @@ static void cube_solve(CUBE *c)
             { 16, 1, 5, 2 },
             { 18, 1, 5, 2 },
             { 20, 1, 5, 2 },
+            { 21, 1, 5, 2 },
+            { 24, 1, 5, 2 },
             { 0 , 0, 0, 0 },
         };
         ZUBE  start = {0};
