@@ -123,7 +123,6 @@ static void surface_rotate90(char buf[3][3])
     }
 }
 
-// W Y G B R O
 static void cube_init(CUBE *c)
 {
     memset(c->f, 1, sizeof(c->f));
@@ -256,9 +255,9 @@ static void cube_render(CUBE *c)
             switch (buffer[i][j]) {
             case 1: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN|FOREGROUND_BLUE); break;
             case 2: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED|FOREGROUND_GREEN); break;
-            case 3: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_GREEN); break;
-            case 4: SetConsoleTextAttribute(h, FOREGROUND_RED|FOREGROUND_BLUE ); break;
-            case 5: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_BLUE ); break;
+            case 3: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_BLUE ); break;
+            case 4: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_GREEN); break;
+            case 5: SetConsoleTextAttribute(h, FOREGROUND_RED|FOREGROUND_BLUE       ); break;
             case 6: SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED  ); break;
             }
             printf(buffer[i][j] ? "\2 " : "  ");
@@ -369,16 +368,23 @@ static int cube_check_edges(CUBE *cube)
 
 static int cube_check_bcross(CUBE *cube)
 {
-    int checklist[][2] = {
-        { cube->b[1][1], cube->b[0][1] },
-        { cube->b[1][1], cube->b[1][0] },
-        { cube->b[1][1], cube->b[1][2] },
-        { cube->b[1][1], cube->b[2][1] },
+    int checklist[][2][2] = {
+        {
+            { cube->b[1][1], cube->b[0][1] },
+            { cube->b[1][1], cube->b[2][1] },
+        },
+        {
+            { cube->b[1][1], cube->b[1][0] },
+            { cube->b[1][1], cube->b[1][2] },
+        },
     };
-    int value = cube_check_edges(cube), i;
+    int value = cube_check_edges(cube), i, j;
     if (value < 16) return value;
-    for (i=0; i<4; i++) {
-        value += (checklist[i][0] == checklist[i][1]);
+    for (j=0; j<2; j++) {
+        value += 2;
+        for (i=0; i<2; i++) {
+            if (checklist[j][i][0] != checklist[j][i][1]) { value -= 2; break; }
+        }
     }
     return value;
 }
@@ -440,7 +446,7 @@ static ZUBE* search(TABLE *table, ZUBE *start, int state, char *oplist, int opnu
 {
     CUBE  curcube, newcube;
     ZUBE *curzube,*newzube;
-    int  curval, newval, i;
+    int   curval , newval, i;
 
     start->parent = NULL;
     start->op     = -1;
@@ -535,6 +541,8 @@ static void cube_solve(CUBE *c)
             { 14, 1, 5, 2 },
             { 15, 1, 5, 2 },
             { 16, 1, 5, 2 },
+            { 18, 1, 5, 2 },
+            { 20, 1, 5, 2 },
             { 0 , 0, 0, 0 },
         };
         ZUBE  start = {0};
@@ -546,12 +554,13 @@ static void cube_solve(CUBE *c)
             if (find) {
                 start = *find;
                 print_solve_oplist(find);
+                zube2cube(c, find, t.center);
+                cube_render(c);
             } else {
                 printf("can't solve !\n");
                 goto done;
             }
         }
-        zube2cube(c, find, t.center);
     }
 
 done:
@@ -563,13 +572,13 @@ static void convert_input(char s[3][3])
     int i, j;
     for (i=0; i<3; i++) {
         for (j=0; j<3; j++) {
-            switch (s[i][j]) {
+            switch (s[i][j]) { // W Y B G O R
             case 'w': case 'W': s[i][j] = 1; break;
             case 'y': case 'Y': s[i][j] = 2; break;
-            case 'g': case 'G': s[i][j] = 3; break;
-            case 'b': case 'B': s[i][j] = 4; break;
-            case 'r': case 'R': s[i][j] = 5; break;
-            case 'o': case 'O': s[i][j] = 6; break;
+            case 'b': case 'B': s[i][j] = 3; break;
+            case 'g': case 'G': s[i][j] = 4; break;
+            case 'o': case 'O': s[i][j] = 5; break;
+            case 'r': case 'R': s[i][j] = 6; break;
             }
         }
     }
@@ -584,13 +593,6 @@ static void cube_input(CUBE *c)
         &(c->f[0][0]), &(c->f[0][1]), &(c->f[0][2]),
         &(c->f[1][0]), &(c->f[1][1]), &(c->f[1][2]),
         &(c->f[2][0]), &(c->f[2][1]), &(c->f[2][2]));
-    gets(str);
-
-    printf("please input B surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
-        &(c->b[0][0]), &(c->b[0][1]), &(c->b[0][2]),
-        &(c->b[1][0]), &(c->b[1][1]), &(c->b[1][2]),
-        &(c->b[2][0]), &(c->b[2][1]), &(c->b[2][2]));
     gets(str);
 
     printf("please input U surface of cube:\n");
@@ -621,12 +623,19 @@ static void cube_input(CUBE *c)
         &(c->r[2][0]), &(c->r[2][1]), &(c->r[2][2]));
     gets(str);
 
+    printf("please input B surface of cube:\n");
+    scanf("%c %c %c %c %c %c %c %c %c",
+        &(c->b[0][0]), &(c->b[0][1]), &(c->b[0][2]),
+        &(c->b[1][0]), &(c->b[1][1]), &(c->b[1][2]),
+        &(c->b[2][0]), &(c->b[2][1]), &(c->b[2][2]));
+    gets(str);
+
     convert_input(c->f);
-    convert_input(c->b);
     convert_input(c->u);
     convert_input(c->d);
     convert_input(c->l);
     convert_input(c->r);
+    convert_input(c->b);
 }
 
 static void show_help(void)
