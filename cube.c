@@ -456,7 +456,7 @@ static int cube_check_bedges(CUBE *cube)
         },
         {
             { cube->r[1][1], cube->r[1][2] },
-            { cube->b[1][1], cube->d[1][0] },
+            { cube->b[1][1], cube->b[1][0] },
         },
     };
     int value = 0, i, j;
@@ -641,6 +641,8 @@ static void cube_solve(CUBE *c)
         static char oplisttab[][6] = {
             { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B },
             { CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B },
+            { CUBE_OP_L, CUBE_OP_B, CUBE_OP_U },
+            { CUBE_OP_B, CUBE_OP_R },
         };
         static int stepparams[][4] = {
             { 2 , 0, 6, 0 }, //+ fcross0
@@ -659,9 +661,9 @@ static void cube_solve(CUBE *c)
             { 20, 1, 5, 10}, //- bcross
             { 21, 1, 5, 10}, //+ bsurface
             { 24, 1, 5, 10}, //- bsurface
-            { 26, 1, 5, 12}, //+ bcorners
-            { 28, 1, 5, 12}, //- bcorners
-//          { 32, 1, 5, 14}, //+-bedges
+            { 26, 2, 3, 12}, //+ bcorners
+            { 28, 2, 3, 12}, //- bcorners
+            { 32, 3, 2, 12}, //+-bedges
             { 0 , 0, 0, 0 },
         };
         ZUBE  start = {0};
@@ -675,7 +677,7 @@ static void cube_solve(CUBE *c)
                     start = *find;
                     print_solve_oplist(find);
                     zube2cube(c, find, t.center);
-                    if (stepparams[i][0] != 28) cube_render(c);
+                    if (stepparams[i][0] != 32) cube_render(c);
                 }
             } else {
                 printf("can't solve !\n");
