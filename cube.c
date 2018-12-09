@@ -616,10 +616,11 @@ static void print_solve_oplist(ZUBE *zube)
             } else {
                 times++;
             }
+        } else {
+            if (last != -1) oplist[i++] = optab[last + times * 6];
         }
         zube = zube->parent;
     }
-    oplist[i++] = optab[last + times * 6];
     printf("\noperation list:\n");
     while (--i >= 0) {
         printf("%s%s%s", oplist[i], i == 0 ? "" : " -> ", ++n % 12 == 0 ? "\n" : "");
@@ -670,15 +671,18 @@ static void cube_solve(CUBE *c)
         for (i=0; stepparams[i][0]; i++) {
             find = search(&t, &start, stepparams[i][0], oplisttab[stepparams[i][1]], stepparams[i][2], stepparams[i][3]);
             if (find) {
-                start = *find;
-                print_solve_oplist(find);
-                zube2cube(c, find, t.center);
-                if (stepparams[i][0] != 32) cube_render(c);
+                if (find != &start) {
+                    start = *find;
+                    print_solve_oplist(find);
+                    zube2cube(c, find, t.center);
+                    if (stepparams[i][0] != 28) cube_render(c);
+                }
             } else {
                 printf("can't solve !\n");
                 goto done;
             }
         }
+        printf("\ncube solved !\n");
     }
 
 done:
