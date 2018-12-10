@@ -663,7 +663,7 @@ static void show_help(void)
         "\n"
         "available commands:\n\n"
         "f f2 f' b b2 b' u u2 u' d d2 d' l l2 l' r r2 r'\n"
-        "init rand solve help exit\n\n"
+        "init rand input solve help exit\n\n"
         "note: all command is case sensitive.\n"
     );
 }
