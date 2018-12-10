@@ -561,31 +561,29 @@ static void cube_solve(CUBE *c)
 
     if (1) {
         static char oplisttab[][6] = {
-            { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B },
+            { CUBE_OP_F, CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R },
             { CUBE_OP_U, CUBE_OP_D, CUBE_OP_L, CUBE_OP_R, CUBE_OP_B },
-            { CUBE_OP_L, CUBE_OP_B, CUBE_OP_U },
-            { CUBE_OP_B, CUBE_OP_R },
+            { CUBE_OP_B, CUBE_OP_R, CUBE_OP_U },
         };
         static int stepparams[][4] = {
-            { 2 , 0, 6, 0 }, //+ fcross0
-            { 4 , 0, 6, 2 }, //- fcross0
-            { 6 , 0, 6, 3 }, //+ fcross1
-            { 8 , 0, 6, 3 }, //- fcross0
-            { 9 , 0, 6, 5 }, //+ fcorners
-            { 10, 0, 6, 5 }, //..
-            { 11, 0, 6, 5 }, //..
-            { 12, 0, 6, 5 }, //- fcorners
+            { 2 , 0, 5, 0 }, //+ fcross0
+            { 4 , 0, 5, 2 }, //- fcross0
+            { 8 , 0, 5, 2 }, //+-fcross1
+            { 9 , 0, 5, 3 }, //+ fcorners
+            { 10, 0, 5, 4 }, //..
+            { 11, 0, 5, 5 }, //..
+            { 12, 0, 5, 5 }, //- fcorners
             { 13, 1, 5, 6 }, //+ medges
             { 14, 1, 5, 6 }, //..
             { 15, 1, 5, 7 }, //..
             { 16, 1, 5, 8 }, //- medges
             { 18, 1, 5, 10}, //+ bcross
-            { 20, 1, 5, 10}, //- bcross
-            { 21, 1, 5, 10}, //+ bsurface
-            { 24, 1, 5, 10}, //- bsurface
+            { 20, 1, 5, 11}, //- bcross
+            { 21, 1, 5, 11}, //+ bsurface
+            { 24, 1, 5, 11}, //- bsurface
             { 26, 2, 3, 12}, //+ bcorners
             { 28, 2, 3, 12}, //- bcorners
-            { 32, 3, 2, 12}, //+-bedges
+            { 32, 2, 2, 12}, //+-bedges
             { 0 , 0, 0, 0 },
         };
         CUBE *start = c;
@@ -723,6 +721,7 @@ int main(void)
         } else if (strcmp(cmd, "init") == 0) {
             cube_init(&c);
         } else if (strcmp(cmd, "rand") == 0) {
+            gets(str);
             cube_rand(&c, atoi(str) == 0 ? 100 : atoi(str));
         } else if (strcmp(cmd, "input") == 0) {
             cube_input(&c);
