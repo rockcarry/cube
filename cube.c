@@ -188,7 +188,7 @@ static void cube_render(CUBE *c)
             case 'o': case 'O': SetConsoleTextAttribute(h, FOREGROUND_RED|FOREGROUND_BLUE       ); break;
             case 'r': case 'R': SetConsoleTextAttribute(h, FOREGROUND_INTENSITY|FOREGROUND_RED  ); break;
             }
-            printf(buffer[i][j] ? "#" : "  ");
+            printf(buffer[i][j] ? "# " : "  ");
         }
         printf("\n");
     }
