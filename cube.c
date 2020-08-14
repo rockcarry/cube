@@ -615,42 +615,42 @@ static void cube_input(CUBE *c)
     char str[256];
 
     printf("please input F surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
+    scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->f[0][0]), &(c->f[0][1]), &(c->f[0][2]),
         &(c->f[1][0]), &(c->f[1][1]), &(c->f[1][2]),
         &(c->f[2][0]), &(c->f[2][1]), &(c->f[2][2]));
     gets(str);
 
     printf("please input U surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
+    scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->u[0][0]), &(c->u[0][1]), &(c->u[0][2]),
         &(c->u[1][0]), &(c->u[1][1]), &(c->u[1][2]),
         &(c->u[2][0]), &(c->u[2][1]), &(c->u[2][2]));
     gets(str);
 
     printf("please input D surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
+    scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->d[0][0]), &(c->d[0][1]), &(c->d[0][2]),
         &(c->d[1][0]), &(c->d[1][1]), &(c->d[1][2]),
         &(c->d[2][0]), &(c->d[2][1]), &(c->d[2][2]));
     gets(str);
 
     printf("please input L surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
+    scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->l[0][0]), &(c->l[0][1]), &(c->l[0][2]),
         &(c->l[1][0]), &(c->l[1][1]), &(c->l[1][2]),
         &(c->l[2][0]), &(c->l[2][1]), &(c->l[2][2]));
     gets(str);
 
     printf("please input R surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
+    scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->r[0][0]), &(c->r[0][1]), &(c->r[0][2]),
         &(c->r[1][0]), &(c->r[1][1]), &(c->r[1][2]),
         &(c->r[2][0]), &(c->r[2][1]), &(c->r[2][2]));
     gets(str);
 
     printf("please input B surface of cube:\n");
-    scanf("%c %c %c %c %c %c %c %c %c",
+    scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->b[0][0]), &(c->b[0][1]), &(c->b[0][2]),
         &(c->b[1][0]), &(c->b[1][1]), &(c->b[1][2]),
         &(c->b[2][0]), &(c->b[2][1]), &(c->b[2][2]));
@@ -729,7 +729,7 @@ int main(void)
             cube_solve(&c);
         } else if (strcmp(cmd, "help") == 0) {
             show_help();
-        } else if (strcmp(cmd, "exit") == 0) {
+        } else if (strcmp(cmd, "exit") == 0 || strcmp(cmd, "quit")) {
             break;
         } else {
             printf("unsupported command !\n");
