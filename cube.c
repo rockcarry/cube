@@ -1,6 +1,8 @@
+#define _CRT_SECURE_NO_WARNINGS
 #include <windows.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <conio.h>
 #include <string.h>
 
 #pragma pack(1)
@@ -410,7 +412,7 @@ static int cube_check_state(CUBE *cube, int flag)
         cube_check_bedges  ,
         NULL,
     };
-    int value = 0, cur, i;
+    int value = 0, cur = 0, i;
     for (i=0; pfn_check_tab[i]; i++) {
         if (flag) {
             value += pfn_check_tab[i](cube);
@@ -615,46 +617,46 @@ static void cube_input(CUBE *c)
     char str[256];
 
     printf("please input F surface of cube:\n");
-    scanf(" %c %c %c %c %c %c %c %c %c",
+    (void)scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->f[0][0]), &(c->f[0][1]), &(c->f[0][2]),
         &(c->f[1][0]), &(c->f[1][1]), &(c->f[1][2]),
         &(c->f[2][0]), &(c->f[2][1]), &(c->f[2][2]));
-    gets(str);
+    fgets(str, sizeof(str), stdin);
 
     printf("please input U surface of cube:\n");
-    scanf(" %c %c %c %c %c %c %c %c %c",
+    (void)scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->u[0][0]), &(c->u[0][1]), &(c->u[0][2]),
         &(c->u[1][0]), &(c->u[1][1]), &(c->u[1][2]),
         &(c->u[2][0]), &(c->u[2][1]), &(c->u[2][2]));
-    gets(str);
+    fgets(str, sizeof(str), stdin);
 
     printf("please input D surface of cube:\n");
-    scanf(" %c %c %c %c %c %c %c %c %c",
+    (void)scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->d[0][0]), &(c->d[0][1]), &(c->d[0][2]),
         &(c->d[1][0]), &(c->d[1][1]), &(c->d[1][2]),
         &(c->d[2][0]), &(c->d[2][1]), &(c->d[2][2]));
-    gets(str);
+    fgets(str, sizeof(str), stdin);
 
     printf("please input L surface of cube:\n");
-    scanf(" %c %c %c %c %c %c %c %c %c",
+    (void)scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->l[0][0]), &(c->l[0][1]), &(c->l[0][2]),
         &(c->l[1][0]), &(c->l[1][1]), &(c->l[1][2]),
         &(c->l[2][0]), &(c->l[2][1]), &(c->l[2][2]));
-    gets(str);
+    fgets(str, sizeof(str), stdin);
 
     printf("please input R surface of cube:\n");
-    scanf(" %c %c %c %c %c %c %c %c %c",
+    (void)scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->r[0][0]), &(c->r[0][1]), &(c->r[0][2]),
         &(c->r[1][0]), &(c->r[1][1]), &(c->r[1][2]),
         &(c->r[2][0]), &(c->r[2][1]), &(c->r[2][2]));
-    gets(str);
+    fgets(str, sizeof(str), stdin);
 
     printf("please input B surface of cube:\n");
-    scanf(" %c %c %c %c %c %c %c %c %c",
+    (void)scanf(" %c %c %c %c %c %c %c %c %c",
         &(c->b[0][0]), &(c->b[0][1]), &(c->b[0][2]),
         &(c->b[1][0]), &(c->b[1][1]), &(c->b[1][2]),
         &(c->b[2][0]), &(c->b[2][1]), &(c->b[2][2]));
-    gets(str);
+    fgets(str, sizeof(str), stdin);
 }
 
 static void show_help(void)
@@ -681,7 +683,7 @@ int main(void)
     while (1) {
         cube_render(&c);
         printf("command: ");
-        scanf("%s", cmd);
+        *cmd = 0; (void)scanf("%s", cmd);
         if (strcmp(cmd, "f") == 0) {
             cube_f(&c);
         } else if (strcmp(cmd, "f2") == 0) {
@@ -721,7 +723,7 @@ int main(void)
         } else if (strcmp(cmd, "init") == 0) {
             cube_init(&c);
         } else if (strcmp(cmd, "rand") == 0) {
-            gets(str);
+            *str = 0; fgets(str, sizeof(str), stdin);
             cube_rand(&c, atoi(str) == 0 ? 100 : atoi(str));
         } else if (strcmp(cmd, "input") == 0) {
             cube_input(&c);
@@ -729,7 +731,7 @@ int main(void)
             cube_solve(&c);
         } else if (strcmp(cmd, "help") == 0) {
             show_help();
-        } else if (strcmp(cmd, "exit") == 0 || strcmp(cmd, "quit")) {
+        } else if (strcmp(cmd, "exit") == 0 || strcmp(cmd, "quit") == 0) {
             break;
         } else {
             printf("unsupported command !\n");
