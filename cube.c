@@ -6,24 +6,24 @@
 #include <string.h>
 
 #pragma pack(1)
-typedef struct tagCUBE {
-    struct tagCUBE *parent;
-    char f[3][3];
-    char b[3][3];
-    char u[3][3];
-    char d[3][3];
-    char l[3][3];
-    char r[3][3];
+typedef struct tagCUBE { // CUBE state node
+    struct tagCUBE *parent; // pointer to parent node
+    char f[3][3]; // front
+    char b[3][3]; // back
+    char u[3][3]; // up
+    char d[3][3]; // down
+    char l[3][3]; // left
+    char r[3][3]; // right
     char op;
 } CUBE;
 #pragma pack()
 
-typedef struct {
+typedef struct { // LINEITEM used to implement cube line rotation
     int   stride;
     char *buffer;
 } LINEITEM;
 
-static void line_rotate90(LINEITEM item[5])
+static void line_rotate90(LINEITEM item[5]) // do line rotation 90 degree
 {
     int i, j;
     for (i=0; i<5; i++) {
@@ -41,7 +41,7 @@ static void line_rotate90(LINEITEM item[5])
     }
 }
 
-static void surface_rotate90(char buf[3][3])
+static void surface_rotate90(char buf[3][3]) // do surface rotation 90 degree
 {
     char tmp[3][3];
     int  i, j;
@@ -55,15 +55,15 @@ static void surface_rotate90(char buf[3][3])
 
 static void cube_init(CUBE *c)
 {
-    memset(c->f, 'w', sizeof(c->f));
-    memset(c->b, 'y', sizeof(c->b));
-    memset(c->u, 'b', sizeof(c->u));
-    memset(c->d, 'g', sizeof(c->d));
-    memset(c->l, 'o', sizeof(c->l));
-    memset(c->r, 'r', sizeof(c->r));
+    memset(c->f, 'w', sizeof(c->f)); // 'w' - white
+    memset(c->b, 'y', sizeof(c->b)); // 'y' - yellow
+    memset(c->u, 'b', sizeof(c->u)); // 'b' - blue
+    memset(c->d, 'g', sizeof(c->d)); // 'g' - green
+    memset(c->l, 'o', sizeof(c->l)); // 'o' - orange
+    memset(c->r, 'r', sizeof(c->r)); // 'r' - red
 }
 
-static void cube_f(CUBE *c)
+static void cube_f(CUBE *c) // f operation
 {
     char temp[3];
     LINEITEM lines[5] = {
@@ -77,7 +77,7 @@ static void cube_f(CUBE *c)
     surface_rotate90(c->f);
 }
 
-static void cube_b(CUBE *c)
+static void cube_b(CUBE *c) // b operation
 {
     char temp[3];
     LINEITEM lines[5] = {
@@ -91,7 +91,7 @@ static void cube_b(CUBE *c)
     surface_rotate90(c->b);
 }
 
-static void cube_u(CUBE *c)
+static void cube_u(CUBE *c) // u operation
 {
     char temp[3];
     LINEITEM lines[5] = {
@@ -105,7 +105,7 @@ static void cube_u(CUBE *c)
     surface_rotate90(c->u);
 }
 
-static void cube_d(CUBE *c)
+static void cube_d(CUBE *c) // d operation
 {
     char temp[3];
     LINEITEM lines[5] = {
@@ -119,7 +119,7 @@ static void cube_d(CUBE *c)
     surface_rotate90(c->d);
 }
 
-static void cube_l(CUBE *c)
+static void cube_l(CUBE *c) // l operation
 {
     char temp[3];
     LINEITEM lines[5] = {
@@ -133,7 +133,7 @@ static void cube_l(CUBE *c)
     surface_rotate90(c->l);
 }
 
-static void cube_r(CUBE *c)
+static void cube_r(CUBE *c) // r operation
 {
     char temp[3];
     LINEITEM lines[5] = {
@@ -156,11 +156,11 @@ enum {
     CUBE_OP_R,
 };
 
-static void (*g_op_tab[])(CUBE *c) = { cube_f, cube_b, cube_u, cube_d, cube_l, cube_r };
-static void cube_op  (CUBE *c, int op) { (g_op_tab[op])(c); }
-static void cube_rand(CUBE *c, int n ) { while (n-- > 0) cube_op(c, rand() % 6); }
+static void (*g_op_tab[])(CUBE *c) = { cube_f, cube_b, cube_u, cube_d, cube_l, cube_r }; // define g_op_tab, an operation functions table
+static void cube_op  (CUBE *c, int op) { (g_op_tab[op])(c); } // cube_op is operation function, parameter op indicate the operation
+static void cube_rand(CUBE *c, int n ) { while (n-- > 0) cube_op(c, rand() % 6); } // random the cube
 
-static void cube_render(CUBE *c)
+static void cube_render(CUBE *c) // draw cube on screen, now only working on win32 console
 {
     char buffer[9][12] = {0};
     int  i, j;
@@ -199,7 +199,7 @@ static void cube_render(CUBE *c)
     SetConsoleTextAttribute(h, wOldColorAttrs);
 }
 
-static int cube_check_fcross0(CUBE *cube)
+static int cube_check_fcross0(CUBE *cube) // check front cross state, in total 4 squares need be solved, if solved score should be 4
 {
     int checklist[][2] = {
         { cube->f[1][1], cube->f[0][1] },
@@ -214,7 +214,7 @@ static int cube_check_fcross0(CUBE *cube)
     return value;
 }
 
-static int cube_check_fcross1(CUBE *cube)
+static int cube_check_fcross1(CUBE *cube) // check first layer cross, in total 4 squares need be solved, if solved score should be 4
 {
     int checklist[][2] = {
         { cube->l[1][1], cube->l[1][2] },
@@ -229,7 +229,7 @@ static int cube_check_fcross1(CUBE *cube)
     return value;
 }
 
-static int cube_check_fcorners(CUBE *cube)
+static int cube_check_fcorners(CUBE *cube) // check front corners
 {
     int checklist[][3][2] = {
         {
@@ -263,7 +263,7 @@ static int cube_check_fcorners(CUBE *cube)
     return value;
 }
 
-static int cube_check_medges(CUBE *cube)
+static int cube_check_medges(CUBE *cube) // check middle edges
 {
     int checklist[][2][2] = {
         {
@@ -293,7 +293,7 @@ static int cube_check_medges(CUBE *cube)
     return value;
 }
 
-static int cube_check_bcross(CUBE *cube)
+static int cube_check_bcross(CUBE *cube) // check back cross
 {
     int checklist[][2][2] = {
         {
@@ -315,7 +315,7 @@ static int cube_check_bcross(CUBE *cube)
     return value;
 }
 
-static int cube_check_bsurface(CUBE *cube)
+static int cube_check_bsurface(CUBE *cube) // check back surface
 {
     int checklist[][2] = {
         { cube->b[1][1], cube->b[0][0] },
@@ -331,7 +331,7 @@ static int cube_check_bsurface(CUBE *cube)
     return value;
 }
 
-static int cube_check_bcorners(CUBE *cube)
+static int cube_check_bcorners(CUBE *cube) // check back corners
 {
     int checklist[][3][2] = {
         {
@@ -369,7 +369,7 @@ static int cube_check_bcorners(CUBE *cube)
     return flag ? value : 0;
 }
 
-static int cube_check_bedges(CUBE *cube)
+static int cube_check_bedges(CUBE *cube) // check back edges
 {
     int checklist[][2][2] = {
         {
@@ -399,7 +399,7 @@ static int cube_check_bedges(CUBE *cube)
     return value;
 }
 
-static int cube_check_state(CUBE *cube, int flag)
+static int cube_check_state(CUBE *cube, int flag) // flag: 0 - calculate score stop when score of one step is not 4, >0 - calulate score stop when cur >= flag
 {
     int (*pfn_check_tab[])(CUBE* cube) = {
         cube_check_fcross0 ,
@@ -443,21 +443,17 @@ static int search_table_create(TABLE *table, int size)
 
 static void search_table_destroy(TABLE *table)
 {
-    if (table->cubes) {
-        free(table->cubes);
-        table->cubes = NULL;
-    }
+    free(table->cubes);
+    table->cubes = NULL;
 }
 
-static int is_4same_ops(CUBE *cube)
+static int is_4same_ops(CUBE *cube) // check whether parent path is 4 same operations path
 {
     int curop = cube->op;
     int n     = 0;
     while (cube) {
         if (cube->op == curop) {
-            if (++n == 4) {
-                return 1;
-            }
+            if (++n == 4) return 1;
             cube = cube->parent;
         } else break;
     }
@@ -479,8 +475,7 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
     if (cube_check_state(start, 0) >= state) return start;
 
     // init search table
-    table->open  = 0;
-    table->close = 0;
+    table->open = table->close = 0;
 
     // put original cube into open table
     table->cubes[table->open] = *start;
@@ -488,10 +483,7 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
 
     while (table->close < table->open) {
         // check memory usage
-        if (table->open + 6 >= table->size - 1) {
-            printf("all table memory have been used !\n");
-            break;
-        }
+        if (table->open + 6 >= table->size - 1) { printf("all table memory have been used !\n"); break; }
 
         // dequeue a cube from open table
         curcube = &(table->cubes[table->close++]);
@@ -505,15 +497,8 @@ static CUBE* search(TABLE *table, CUBE *start, int state, char *oplist, int opnu
             newcube->parent = curcube;
             newstate = cube_check_state(newcube, 0    );
             newvalue = cube_check_state(newcube, state);
-            if (newstate >= state) { // found
-                return newcube;
-            }
-            if (is_4same_ops(newcube)) {
-                continue;
-            }
-            if (cut_branch(newvalue, cutval)) {
-                continue;
-            }
+            if (newstate >= state) return newcube; // found
+            if (cut_branch(newvalue, cutval) || is_4same_ops(newcube)) continue; // cut branch
             table->open++;
         }
     }
